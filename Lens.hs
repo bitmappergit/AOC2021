@@ -13,9 +13,11 @@ module Lens
   , Lens
   , Mono
   , iso
+  , from
   , lens
   , view
   , (%)
+  , (&)
   , over
   , set
   , use
@@ -37,6 +39,8 @@ module Lens
   , (&~)
   , Indexable(..)
   , at
+  , bitAt
+  , bits 
   , (<#=)
   , (<+=)
   , (<-=)
@@ -45,6 +49,8 @@ module Lens
   , (<&=)
   , _head
   , _tail
+  , _fst
+  , _snd
   ) where
 
 import Data.Kind
@@ -53,6 +59,7 @@ import Control.Monad.State
 import Data.Functor.Const
 import Data.Functor.Identity
 import qualified Data.Sequence as Seq
+import Data.Function
 
 class Profunctor p where
   dimap :: (a -> b) -> (c -> d) -> p b c -> p a d
@@ -62,24 +69,35 @@ class Profunctor p where
   
   rmap :: (b -> c) -> p a b -> p a c
   rmap f = dimap id f
-  
+
+instance Profunctor (->) where
+  dimap f g p = g . p . f
+
 class Contravariant f where
   contramap :: f a -> f b
 
-data Exchange a b s t where
-  Exchange :: (s -> a) -> (b -> t) -> Exchange a b s t
+data Exchange a b s t
+  = Exchange { unwrap :: s -> a
+             , wrap :: b -> t
+             }
 
 instance Profunctor (Exchange a b) where
-  dimap f g (Exchange sa bt) = Exchange (sa . f) (g . bt)
+  dimap f g (Exchange unwrap wrap) =
+    Exchange { unwrap = unwrap . f
+             , wrap = g . wrap
+             }
 
 instance Functor (Exchange a b s) where
-  fmap f (Exchange sa bt) = Exchange sa (f . bt)
+  fmap f (Exchange unwrap wrap) =
+    Exchange { unwrap = unwrap
+             , wrap = f . wrap
+             }
 
 type Mono o s a = o s s a a
 
 type Iso s t a b = forall p f. (Profunctor p, Functor f) => p a (f b) -> p s (f t)
 
-type AnIso s t a b = Exchange a b a (Identity b) -> Exchange a b s (Identity s)
+type AnIso s t a b = Exchange a b a (Identity b) -> Exchange a b s (Identity t)
 
 type Lens s t a b = forall f. Functor f => (a -> f b) -> (s -> f t)
 
@@ -91,6 +109,11 @@ iso :: (s -> a) -> (b -> t) -> Iso s t a b
 iso sa bt = dimap sa (fmap bt)
 
 {-# INLINE iso #-}
+
+from :: AnIso s t a b -> Iso b a t s
+from l | Exchange sa bt <- l (Exchange id Identity) = dimap (runIdentity . bt) (fmap sa)
+
+{-# INLINE from #-}
 
 lens :: (s -> a) -> (s -> b -> t) -> Lens s t a b
 lens sa sbt afb s = sbt s <$> afb (sa s)
@@ -253,6 +276,21 @@ at idx = lens (getAt idx) (putAt idx)
 
 {-# INLINE at #-}
 
+bitAt :: Bits a => Int -> Mono Lens a Bool
+bitAt idx = lens getter setter
+  where getter bits = testBit bits idx
+        setter bits bit = if bit then setBit bits idx else clearBit bits idx
+
+{-# INLINE bitAt #-}
+
+bits :: Mono Iso Int [Bool]
+bits = iso (reverse . from) (to . reverse)
+  where from 0 = []
+        from n = not (mod n 2 == 0) : from (div n 2)
+        to = foldl (\a (i, v) -> a & bitAt i #~ v) 0 . zip [0..]
+
+{-# INLINE bits #-}
+
 _head :: Mono Lens [a] a
 _head = lens getter setter
   where getter (x : xs) = x
@@ -266,3 +304,13 @@ _tail = lens getter setter
         setter (x : xs) ys = x : ys
 
 {-# INLINE _tail #-}
+
+_fst :: Lens (a, c) (b, c) a b
+_fst = lens fst \(a, c) b -> (b, c)
+
+{-# INLINE _fst #-}
+
+_snd :: Lens (c, a) (c, b) a b
+_snd = lens snd \(c, a) b -> (c, b)
+
+{-# INLINE _snd #-}
