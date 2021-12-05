@@ -36,16 +36,12 @@ sortBingos called bingos = sortBy (on compare fst) $ map (bingoCost called) bing
 solve :: [Int] -> [Bingo] -> (Int, Int)
 solve called bingos = do
   let results = sortBingos called bingos
-  
   let (bestDistance, best) = head results
   let (worstDistance, worst) = last results
-  
   let bestCalled = take (bestDistance + 1) called
-  let worstCalled = take (worstDistance + 1) called
-
   let bestNotCalled = concatMap (filter (`notElem` bestCalled)) best
+  let worstCalled = take (worstDistance + 1) called
   let worstNotCalled = concatMap (filter (`notElem` worstCalled)) worst
-
   (last bestCalled * sum bestNotCalled, last worstCalled * sum worstNotCalled)
 
 main :: IO ()
