@@ -1,7 +1,8 @@
 {-# LANGUAGE BlockArguments, LambdaCase, LiberalTypeSynonyms #-}
 
 import Data.List
-import Lens
+import Optics 
+import Bitwise
 
 count :: (a -> Bool) -> [a] -> Int
 count f = length . filter f
@@ -19,33 +20,29 @@ toBool :: Char -> Bool
 toBool = \case '0' -> False; '1' -> True
 
 toDec :: [Bool] -> Int
-toDec = foldl (\a (i, v) -> a & set (bitAt i) v) 0 . zip [0..] . reverse
+toDec = foldl (\a (i, v) -> a & bitAt i .~ v) 0 . zip [0..] . reverse
 
 data Sub
   = Sub { _input :: [([Bool], [Bool])]
         , _common :: [Ordering]
         } deriving (Show, Eq)
 
-input :: Mono Lens Sub [([Bool], [Bool])]
+input :: Simple Lens Sub [([Bool], [Bool])]
 input = lens _input \o n -> o { _input = n }
 
-common :: Mono Lens Sub [Ordering]
+common :: Simple Lens Sub [Ordering]
 common = lens _common \o n -> o { _common = n }
 
 whittle :: (Ordering -> Bool) -> Sub -> Sub
 whittle sysCheck = genCommon . shiftProcessed . checkCriteria
   where checkCriteria calc =
-          calc & over input do
-            filter \(bit : _, _) -> do
-              sysCheck (calc % common & head) == bit
+          calc & input %~ filter \(bit : _, _) -> sysCheck (calc % common & head) == bit
 
         shiftProcessed calc =
-          calc & over input do
-             map \(bit : xs, ys) -> (xs, bit : ys)
+          calc & input . each %~ \(bit : xs, ys) -> (xs, bit : ys)
 
         genCommon calc =
-          calc & set common do
-            calc % input & map getCommon . transpose . map fst
+          calc & common .~ (calc % input & map getCommon . transpose . map fst)
 
 cut :: (Ordering -> Bool) -> Sub -> Int
 cut f calc =

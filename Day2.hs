@@ -2,7 +2,7 @@
 
 import Text.Parsec
 import Text.Parsec.String
-import Lens 
+import Optics 
 import Data.Function
 
 data Command
@@ -23,14 +23,13 @@ command = choice [ constructor "forward" Forward
 file :: Parser [Command]
 file = sepEndBy command spaces
 
-
 data Sub
   = Sub { _horizontal :: Int
         , _vertical :: Int
         , _aim :: Int
         } deriving (Show, Eq)
 
-horizontal, vertical, aim :: Mono Lens Sub Int
+horizontal, vertical, aim :: Simple Lens Sub Int
 horizontal = lens _horizontal \o n -> o { _horizontal = n }
 vertical = lens _vertical \o n -> o { _vertical = n }
 aim = lens _aim \o n -> o { _aim = n }
@@ -40,7 +39,6 @@ run stepper input sub =
   case input of
     x : xs -> run stepper xs (stepper x sub)
     [] -> sub % horizontal * sub % vertical
-
 
 step1 :: Command -> Sub -> Sub
 step1 command sub =
