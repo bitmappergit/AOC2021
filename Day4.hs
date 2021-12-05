@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, LiberalTypeSynonyms, BlockArguments #-}
+{-# LANGUAGE BlockArguments #-}
 
 module Day4 where
 
