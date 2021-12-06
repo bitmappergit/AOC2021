@@ -2,6 +2,7 @@
 
 module Day4 where
 
+import Data.Ord
 import Data.List
 import Text.Parsec
 import Data.Maybe
@@ -18,7 +19,7 @@ parseFile = (,) <$> parseCalled <*> many parseBingo
   where integer = read <$> many1 digit
         parseCalled = integer `sepBy` char ','
         parseRow = (spaces *> integer) `sepBy` many1 (char ' ')
-        parseBingo = forM [1..5] \_ -> parseRow <* char '\n'
+        parseBingo = count 5 (parseRow <* char '\n')
 
 numberCost :: [Int] -> Int -> Int
 numberCost called num = fromJust $ findIndex (== num) called
@@ -31,7 +32,7 @@ bingoCost called bingo = do
   (min horizontalCost verticalCost, bingo)
 
 sortBingos :: [Int] -> [Bingo] -> [TimedBingo]
-sortBingos called bingos = sortBy (on compare fst) $ map (bingoCost called) bingos
+sortBingos called bingos = sortBy (comparing fst) $ map (bingoCost called) bingos
 
 solve :: [Int] -> [Bingo] -> (Int, Int)
 solve called bingos = do
