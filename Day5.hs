@@ -1,4 +1,4 @@
-{-# LANGUAGE BlockArguments, ParallelListComp #-}
+{-# LANGUAGE BlockArguments #-}
 
 import Optics
 import Data.Function
