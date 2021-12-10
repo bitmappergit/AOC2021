@@ -95,6 +95,7 @@ import Data.Text as Text
 import Data.List as List
 import Data.Tuple as Tuple
 import Data.Sequence as Seq
+import Data.Map as Map
 import Control.Monad.State as State
 import Data.Functor.Identity
 import Data.Functor.Const
@@ -623,6 +624,15 @@ instance Indexable [] Int where
   {-# INLINE putAt #-}
 
   putAt idx val new = val & asSeq.at idx .~ new
+
+instance Ord k => Indexable (Map k) k where
+  {-# INLINE getAt #-}
+
+  getAt idx val = val Map.! idx
+
+  {-# INLINE putAt #-}
+
+  putAt idx val new = Map.insert idx new val
 
 {-# INLINE at #-}
 
